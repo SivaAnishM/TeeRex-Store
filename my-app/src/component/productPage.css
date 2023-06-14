@@ -42,6 +42,11 @@
   position: relative;
   top: 30vh;
 }
+
+.card-body{
+  padding:1rem;
+}
+
 .shopping-box{
   font-size: 1.5rem;
   position: relative;

@@ -11,7 +11,7 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import "./productcart.css";
+import "./productPage.css";
 
 const ProductCard = ({ product, cartQty, handleAddToCart }) => {
   return (

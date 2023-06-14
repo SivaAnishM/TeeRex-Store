@@ -52,7 +52,7 @@ const ProductPage = () => {
     let tempColor = [];
     let tempType = [];
 
-    products.forEach((product) => {
+    products.map((product) => {
       if (!tempColor.includes(product.color)) {
         tempColor.push(product.color);
       }
@@ -149,22 +149,22 @@ const ProductPage = () => {
 
   // Add a product to cartProduct page for product page
   const addToCart = async (product, qty) => {
-    let { id, name, imageURL, price, quantity } = product;
-    if (qty > quantity) {
-      alert("Maximum quantity reached");
-    } else if (qty === 0) {
+    const { id, name, imageURL, price, quantity } = product;
+    if (qty === 0) {
       deleteCartItem(id);
+    } else if (qty > quantity) {
+      alert("Maximum quantity reached");
     } else {
-      let cartValue = [...cartProduct];
-      let removeItem = cartValue.find((product) => {
+      let Cart = [...cartProduct];
+      let remove = Cart.find((product) => {
         if (product.id === id) return true;
       });
-      if (removeItem !== undefined) {
-        let prodIndex = cartValue.indexOf(removeItem);
-        cartValue.splice(prodIndex, 1);
+      if (remove !== undefined) {
+        let index = Cart.indexOf(remove);
+        Cart.splice(index, 1);
       }
       let temp = [
-        ...cartValue,
+        ...Cart,
         { id: id, name: name, imageURL: imageURL, qty: qty, price: price },
       ];
       setcartProduct(temp);
@@ -352,7 +352,7 @@ const ProductPage = () => {
                 <a className="total-amount">Total amouth ₹ {cartprice}</a>
               </div>
             ) : (
-              <div className="no-shopingcart">NO PRODUCT IN cartProduct!!</div>
+              <div className="no-shopingcart">NO PRODUCT IN CART !!!</div>
             )}
           </div>
         </div>
