@@ -2,6 +2,7 @@ import "./productPage.css";
 import axios from "axios";
 import { config } from "../App";
 import React, { useEffect, useState } from "react";
+import { Box } from "@mui/system";
 import {
   Badge,
   Button,
@@ -10,21 +11,26 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import MenuItems from "./SidemenuItem";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCartOutlined";
+import SearchIcon from "@mui/icons-material/Search";
+import FilterAltIcon from "@mui/icons-material/FilterAlt";
+import ProductCard from "./productCart";
 
 const ProductPage = () => {
   const [productPages, setProductPages] = useState(true);
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
+  const [search, setSearch] = useState("");
 
-  const [filters, setFilters] = useState({
+  const [filtersmenu, setfiltersmenu] = useState({
     color: [],
     type: [],
     gender: ["Men", "Women"],
-    priceRange: ["$ 0-250", "$ 250-450", "$ 450 - above"],
+    priceRange: ["0-250", "250-450", "450"],
   });
 
-  const [selectedFilters, setSelectedFilters] = useState({
+  const [SelectedFilterProduct, setSelectedFilterProduct] = useState({
     color: [],
     type: [],
     gender: [],
@@ -54,10 +60,129 @@ const ProductPage = () => {
         tempType.push(product.type);
       }
     });
-    setFilters({ ...filters, color: tempColor, type: tempType });
+    setfiltersmenu({ ...filtersmenu, color: tempColor, type: tempType });
   };
 
-  const handleFilters = (e) => {};
+  //store the filtered products in SelectedFilterProduct
+  const handleFilters = (val) => {
+    const { name, value } = val.target;
+    let temp;
+    if (name === "priceRange") {
+      if (SelectedFilterProduct[name][0] === value) {
+        temp = [""];
+      } else temp = [value];
+    } else {
+      if (!SelectedFilterProduct[name].includes(value)) {
+        temp = [...SelectedFilterProduct[name], value];
+      } else {
+        temp = [...SelectedFilterProduct[name]];
+        let index = temp.indexOf(value);
+        temp.splice(index, 1);
+      }
+    }
+
+    setSelectedFilterProduct({ ...SelectedFilterProduct, [name]: temp });
+  };
+
+  const [debounceTimeout, setDebounceTimeout] = useState(0);
+
+  const performSearch = (value) => {
+    let filtered = products.filter((item) => {
+      return (
+        item.name.toLowerCase().includes(value) ||
+        item.type.toLowerCase().includes(value) ||
+        item.color.toLowerCase().includes(value)
+      );
+    });
+    setFilteredProducts(filtered);
+  };
+
+  const debounceSearch = (event, debounceTimeout) => {
+    let value = event.target.value;
+
+    if (debounceTimeout) clearTimeout(debounceTimeout);
+    setDebounceTimeout(setTimeout(() => performSearch(value), 800));
+  };
+
+  // updateing the filtersmenu options
+  const updateFilteredProducts = () => {
+    let { color, type, gender, priceRange } = SelectedFilterProduct;
+    let price = priceRange[0].split("-");
+
+    let temp = products.filter((product) => {
+      return (
+        (color.length === 0 || color.includes(product.color)) &&
+        (type.length === 0 || type.includes(product.type)) &&
+        (gender.length === 0 || gender.includes(product.gender)) &&
+        (price.length === 1 ||
+          (product.price >= price[0] && product.price <= price[1])) &&
+        (price.length !== 1 ||
+          price[0].length === 0 ||
+          product.price === price[0])
+      );
+    });
+    setFilteredProducts(temp);
+  };
+
+  const [cartProduct, setcartProduct] = useState([]);
+
+  // find products quantity
+  const getCartQty = (id) => {
+    let qty = 0;
+    if (cartProduct.length) {
+      cartProduct.forEach((value) => {
+        if (value.id === id) {
+          qty = value.qty;
+        }
+      });
+    }
+    return qty;
+  };
+
+  //Delete products from the cartProduct list
+  const deleteCartItem = (prodId) => {
+    let cartValue = [...cartProduct];
+    let index = cartValue.findIndex((pd) => pd.id === prodId);
+    cartValue.splice(index, 1);
+    setcartProduct(cartValue);
+  };
+
+  // Add a product to cartProduct page for product page
+  const addToCart = async (product, qty) => {
+    let { id, name, imageURL, price, quantity } = product;
+    if (qty > quantity) {
+      alert("Maximum quantity reached");
+    } else if (qty === 0) {
+      deleteCartItem(id);
+    } else {
+      let cartValue = [...cartProduct];
+      let removeItem = cartValue.find((product) => {
+        if (product.id === id) return true;
+      });
+      if (removeItem !== undefined) {
+        let prodIndex = cartValue.indexOf(removeItem);
+        cartValue.splice(prodIndex, 1);
+      }
+      let temp = [
+        ...cartValue,
+        { id: id, name: name, imageURL: imageURL, qty: qty, price: price },
+      ];
+      setcartProduct(temp);
+    }
+  };
+
+  //set the toal cartProduct price in cartProduct page
+  const [cartprice, setCartprice] = useState(0);
+  const CartPrice = () => {
+    let sum = 0;
+    cartProduct.forEach((product) => {
+      var temp = product.price * product.qty;
+      sum += temp;
+    });
+    console.log(sum);
+    setCartprice(sum);
+  };
+
   useEffect(() => {
     getProductsFromAPI();
   }, []);
@@ -65,6 +190,14 @@ const ProductPage = () => {
   useEffect(() => {
     updateFilter();
   }, [products]);
+
+  useEffect(() => {
+    updateFilteredProducts();
+  }, [SelectedFilterProduct]);
+
+  useEffect(() => {
+    CartPrice();
+  }, [cartProduct]);
 
   return (
     <div>
@@ -77,97 +210,79 @@ const ProductPage = () => {
                 <div className="Line">Product</div>
               </a>
               <Button color="inherit" onClick={() => setProductPages(false)}>
-                <Badge badgeContent="2">
+                <Badge badgeContent={cartProduct.length}>
                   <ShoppingCartIcon fontSize="large" />
                 </Badge>
               </Button>
             </div>
           </div>
           <Grid container>
-            <Grid item sm={3} sx={{ display: { xs: "none", md: "block" } }}>
-              <Stack
-                style={{ boxShadow: "1px 2px 9px grey" }}
-                className="filter-item"
-                display="flex"
-                flexDirection="column"
-                justifyContent="flex-start"
-              >
-                <div>
-                  <b>Color</b>
-                  {filters.color.map(function (x) {
-                    return (
-                      <div style={{ padding: "5px" }}>
-                        <input
-                          type={"checkbox"}
-                          key={x}
-                          name="color"
-                          value={x}
-                          onChange={handleFilters}
-                          checked={selectedFilters.color.includes(x)}
-                        />
-                        {x}
-                      </div>
-                    );
-                  })}
-                </div>
-                <div>
-                  <b>Gender</b>
-                  {filters.gender.map(function (x) {
-                    return (
-                      <div style={{ padding: "5px" }}>
-                        <input
-                          type={"checkbox"}
-                          key={x}
-                          name="gender"
-                          value={x}
-                          onChange={handleFilters}
-                          checked={selectedFilters.gender.includes(x)}
-                        />
-                        {x}
-                      </div>
-                    );
-                  })}
-                </div>
-                <div>
-                  <b>Price</b>
-                  {filters.priceRange.map(function (x) {
-                    return (
-                      <div style={{ padding: "5px" }}>
-                        <input
-                          type={"checkbox"}
-                          key={x}
-                          name="priceRange"
-                          value={x}
-                          onChange={handleFilters}
-                          checked={selectedFilters.priceRange.includes(x)}
-                        />
-                        {x}
-                      </div>
-                    );
-                  })}
-                </div>
-                <div>
-                  <b>Type</b>
-                  {filters.type.map(function (x) {
-                    return (
-                      <div style={{ padding: "5px" }}>
-                        <input
-                          type={"checkbox"}
-                          key={x}
-                          name="type"
-                          value={x}
-                          onChange={handleFilters}
-                          checked={selectedFilters.type.includes(x)}
-                        />
-                        {x}
-                      </div>
-                    );
-                  })}
-                </div>
-              </Stack>
+            <Grid item md={3} sx={{ display: { xs: "none", md: "block" } }}>
+              <MenuItems
+                filtersmenu={filtersmenu}
+                SelectedFilterProduct={SelectedFilterProduct}
+                handleFilters={handleFilters}
+              />
             </Grid>
-            <Grid item sm={9} xs={12}>
-              <div className="product-item"></div>
+            <Grid item md={9} xs={12}>
+              <div className="product-item">
+                <Box
+                  className="product-desktop"
+                  display="flex"
+                  flexDirection="column"
+                  justifyContent="space-between"
+                  alignItems="center"
+                >
+                  <Stack spacing={2} direction="row" position="center">
+                    <TextField
+                      className="search-field"
+                      size="normal"
+                      variant="standard"
+                      sx={{ width: "45vh" }}
+                      placeholder="Search for products..."
+                      name="search"
+                      value={search}
+                      onChange={(event) => {
+                        setSearch(event.target.value);
+                        debounceSearch(event, debounceTimeout);
+                      }}
+                    />
+                    <Button variant="contained" color="inherit">
+                      <SearchIcon />
+                    </Button>
+                    <Button
+                      className="filter-button"
+                      variant="contained"
+                      color="inherit"
+                    >
+                      <FilterAltIcon />
+                    </Button>
+                  </Stack>
+                  {filteredProducts.length ? (
+                    <Grid
+                      container
+                      spacing={7}
+                      padding="3rem 4rem"
+                      direction="row"
+                      alignItems="center"
+                    >
+                      {filteredProducts.map((product) => {
+                        return (
+                          <Grid item sm={6} lg={4} xs={12} key={product.id}>
+                            <ProductCard
+                              product={product}
+                              cartQty={getCartQty(product.id)}
+                              handleAddToCart={addToCart}
+                            />
+                          </Grid>
+                        );
+                      })}
+                    </Grid>
+                  ) : (
+                    <div className="zero-product">No products found...</div>
+                  )}
+                </Box>
+              </div>
             </Grid>
           </Grid>
         </div>
@@ -181,12 +296,64 @@ const ProductPage = () => {
               </a>
               <div className="Line">
                 <Button color="inherit">
-                  <Badge badgeContent="2">
+                  <Badge badgeContent={cartProduct.length}>
                     <ShoppingCartIcon fontSize="large" />
                   </Badge>
                 </Button>
               </div>
             </div>
+          </div>
+          <div className="shopping-box ">
+            <p>ShoppingCart</p>
+
+            {cartProduct.length > 0 ? (
+              <div>
+                <div className="shopping-Line">
+                  {cartProduct.map((product) => {
+                    return (
+                      <div key={product.id}>
+                        <Box
+                          display="flex"
+                          alignItems="center"
+                          padding="1rem"
+                          className="shopingcart"
+                        >
+                          <Box className="image-shoppingcart">
+                            <img
+                              src={product.imageURL}
+                              alt={product.name}
+                              width="100%"
+                              height="100%"
+                            />
+                          </Box>
+                          <Box padding={"1rem"}>
+                            <Typography variant="h6">{product.name}</Typography>
+                            <Typography variant="subtitle">
+                              Rs {product.price}
+                            </Typography>
+                          </Box>
+                          <Box>
+                            <Button variant="outlined" disabled>
+                              Qty: {product.qty}
+                            </Button>
+                            <Button
+                              color="inherit"
+                              variant="outlined"
+                              onClick={() => deleteCartItem(product.id)}
+                            >
+                              Delete
+                            </Button>
+                          </Box>
+                        </Box>
+                      </div>
+                    );
+                  })}
+                </div>
+                <a className="total-amount">Total amouth ₹ {cartprice}</a>
+              </div>
+            ) : (
+              <div className="no-shopingcart">NO PRODUCT IN cartProduct!!</div>
+            )}
           </div>
         </div>
       )}
